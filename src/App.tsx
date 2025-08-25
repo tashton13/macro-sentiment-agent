@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Settings, RefreshCw, AlertCircle, Activity, Clock } from 'lucide-react';
 import { SentimentCanvas } from './components/SentimentCanvas';
 import { TopicDetailDrawer } from './components/TopicDetailDrawer';
+import { TopicManager } from './components/TopicManager';
 import { useSentimentData } from './hooks/useSentimentData';
 import { TopicSentiment } from './types/sentiment';
 
@@ -9,8 +10,9 @@ function App() {
   const [pollingInterval, setPollingInterval] = useState(60000); // 1 minute default
   const [selectedTopic, setSelectedTopic] = useState<TopicSentiment | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [topicsRefreshTrigger, setTopicsRefreshTrigger] = useState(0);
 
-  const { data, loading, error, lastUpdated, refresh } = useSentimentData(pollingInterval);
+  const { data, loading, error, lastUpdated, refresh } = useSentimentData(pollingInterval, topicsRefreshTrigger);
 
   const handleBubbleClick = (topic: TopicSentiment) => {
     setSelectedTopic(topic);
@@ -18,6 +20,10 @@ function App() {
 
   const handleCloseDrawer = () => {
     setSelectedTopic(null);
+  };
+
+  const handleTopicsChange = () => {
+    setTopicsRefreshTrigger(prev => prev + 1);
   };
 
   const getDataSourceInfo = () => {
@@ -172,14 +178,26 @@ function App() {
           </div>
         )}
 
-        {/* Sentiment Canvas */}
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-          <div className="h-[600px]">
-            <SentimentCanvas
-              topics={data?.topics || []}
-              onBubbleClick={handleBubbleClick}
-              selectedTopicId={selectedTopic?.topicId}
-            />
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Sentiment Canvas - Takes up 3/4 of the width */}
+          <div className="lg:col-span-3">
+            <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+              <div className="h-[600px]">
+                <SentimentCanvas
+                  topics={data?.topics || []}
+                  onBubbleClick={handleBubbleClick}
+                  selectedTopicId={selectedTopic?.topicId}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Topic Manager - Takes up 1/4 of the width */}
+          <div className="lg:col-span-1">
+            <div className="h-[600px]">
+              <TopicManager onTopicsChange={handleTopicsChange} />
+            </div>
           </div>
         </div>
 
