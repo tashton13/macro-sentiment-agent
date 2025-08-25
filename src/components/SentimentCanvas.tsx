@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SentimentBubble } from './SentimentBubble';
 import { TopicSentiment } from '../types/sentiment';
@@ -28,8 +28,6 @@ export const SentimentCanvas: React.FC<SentimentCanvasProps> = ({
 }) => {
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
   const [bubblePhysics, setBubblePhysics] = useState<{ [key: string]: BubblePhysics }>({});
-  const animationFrameRef = useRef<number>();
-  const lastUpdateRef = useRef<number>(Date.now());
 
   // Update canvas size on window resize
   useEffect(() => {
