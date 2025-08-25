@@ -1,0 +1,149 @@
+{
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "topics": [
+    {
+      "topicId": "inflation",
+      "label": "Inflation",
+      "sentiment": 0.15,
+      "volume": 127,
+      "positiveCount": 52,
+      "negativeCount": 38,
+      "neutralCount": 37,
+      "topPosts": [
+        {
+          "id": "demo_1",
+          "text": "Latest CPI data shows encouraging signs of cooling inflation with core prices rising at a slower pace than expected.",
+          "author": "EconomicAnalyst",
+          "timestamp": "2024-01-15T09:45:00.000Z",
+          "sentiment": 0.6,
+          "source": "twitter",
+          "url": "https://twitter.com/example/status/123"
+        },
+        {
+          "id": "demo_2",
+          "text": "While headline inflation is moderating, persistent price pressures in housing and services remain concerning for policymakers.",
+          "author": "MarketWatcher",
+          "timestamp": "2024-01-15T08:30:00.000Z",
+          "sentiment": -0.2,
+          "source": "reddit",
+          "url": "https://reddit.com/r/economics/example"
+        }
+      ],
+      "trend": [0.12, 0.18, 0.15],
+      "lastUpdated": "2024-01-15T10:30:00.000Z"
+    },
+    {
+      "topicId": "rates",
+      "label": "Interest Rates",
+      "sentiment": -0.35,
+      "volume": 89,
+      "positiveCount": 25,
+      "negativeCount": 48,
+      "neutralCount": 16,
+      "topPosts": [
+        {
+          "id": "demo_3",
+          "text": "Fed officials signal potential for more aggressive rate hikes if inflation remains elevated above target.",
+          "author": "FedWatcher",
+          "timestamp": "2024-01-15T09:15:00.000Z",
+          "sentiment": -0.7,
+          "source": "twitter",
+          "url": "https://twitter.com/example/status/456"
+        }
+      ],
+      "trend": [-0.25, -0.30, -0.35],
+      "lastUpdated": "2024-01-15T10:30:00.000Z"
+    },
+    {
+      "topicId": "employment",
+      "label": "Employment",
+      "sentiment": 0.45,
+      "volume": 156,
+      "positiveCount": 89,
+      "negativeCount": 23,
+      "neutralCount": 44,
+      "topPosts": [
+        {
+          "id": "demo_4",
+          "text": "Jobs report exceeds expectations with strong payroll growth and unemployment holding near historic lows.",
+          "author": "JobsReport",
+          "timestamp": "2024-01-15T08:00:00.000Z",
+          "sentiment": 0.8,
+          "source": "reddit",
+          "url": "https://reddit.com/r/jobs/example"
+        }
+      ],
+      "trend": [0.38, 0.42, 0.45],
+      "lastUpdated": "2024-01-15T10:30:00.000Z"
+    },
+    {
+      "topicId": "housing",
+      "label": "Housing Market", 
+      "sentiment": -0.2,
+      "volume": 73,
+      "positiveCount": 18,
+      "negativeCount": 35,
+      "neutralCount": 20,
+      "topPosts": [
+        {
+          "id": "demo_5",
+          "text": "Rising mortgage rates continue to impact housing affordability as home sales decline in most metropolitan areas.",
+          "author": "RealEstateNews",
+          "timestamp": "2024-01-15T07:45:00.000Z",
+          "sentiment": -0.5,
+          "source": "twitter",
+          "url": "https://twitter.com/example/status/789"
+        }
+      ],
+      "trend": [-0.15, -0.18, -0.2],
+      "lastUpdated": "2024-01-15T10:30:00.000Z"
+    },
+    {
+      "topicId": "markets",
+      "label": "Financial Markets",
+      "sentiment": 0.1,
+      "volume": 203,
+      "positiveCount": 67,
+      "negativeCount": 58,
+      "neutralCount": 78,
+      "topPosts": [
+        {
+          "id": "demo_6",
+          "text": "Markets showing mixed signals as investors weigh positive earnings against concerns over monetary policy tightening.",
+          "author": "MarketAnalyst",
+          "timestamp": "2024-01-15T09:30:00.000Z",
+          "sentiment": 0.1,
+          "source": "twitter",
+          "url": "https://twitter.com/example/status/012"
+        }
+      ],
+      "trend": [0.05, 0.08, 0.1],
+      "lastUpdated": "2024-01-15T10:30:00.000Z"
+    },
+    {
+      "topicId": "energy",
+      "label": "Energy",
+      "sentiment": 0.25,
+      "volume": 94,
+      "positiveCount": 45,
+      "negativeCount": 22,
+      "neutralCount": 27,
+      "topPosts": [
+        {
+          "id": "demo_7",
+          "text": "Oil prices stabilizing as global supply concerns ease with increased production from major producers.",
+          "author": "EnergyTrader",
+          "timestamp": "2024-01-15T08:15:00.000Z",
+          "sentiment": 0.4,
+          "source": "reddit",
+          "url": "https://reddit.com/r/energy/example"
+        }
+      ],
+      "trend": [0.18, 0.22, 0.25],
+      "lastUpdated": "2024-01-15T10:30:00.000Z"
+    }
+  ],
+  "totalPosts": 742,
+  "updateInterval": 5,
+  "dataSource": "mixed"
+} 
