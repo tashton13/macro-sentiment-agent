@@ -75,27 +75,28 @@ export const SentimentBubble: React.FC<SentimentBubbleProps> = ({
         x: position.x - size/2,  // Center the bubble on the position
         y: position.y - size/2   // Center the bubble on the position
       }}
-      whileHover={{ scale: 1.1 }}
-      whileTap={{ scale: 0.95 }}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.98 }}
       className={`absolute cursor-pointer select-none ${isSelected ? 'z-20' : 'z-10'}`}
       style={{
         width: size,
         height: size,
         backgroundColor: getSentimentColor(data.sentiment),
-        border: `3px solid ${getBorderColor(data.sentiment)}`,
+        border: `2px solid ${getBorderColor(data.sentiment)}`,
         borderRadius: '50%',
         boxShadow: isSelected 
-          ? `0 0 20px ${getBorderColor(data.sentiment)}` 
-          : '0 4px 12px rgba(0, 0, 0, 0.15)',
+          ? `0 0 15px ${getBorderColor(data.sentiment)}` 
+          : '0 2px 8px rgba(0, 0, 0, 0.1)',
       }}
       onClick={onClick}
-      layout
       transition={{
-        type: "spring",
-        stiffness: 100,
-        damping: 25,
-        mass: 1,
-        duration: 1.2
+        type: "tween",
+        ease: "easeOut",
+        duration: 0.1,
+        x: { type: "tween", ease: "linear", duration: 0 }, // No transition for position
+        y: { type: "tween", ease: "linear", duration: 0 }, // No transition for position
+        scale: { type: "spring", stiffness: 400, damping: 30 },
+        opacity: { duration: 0.3 }
       }}
     >
       {/* Pulse animation for active bubbles */}

@@ -1,7 +1,19 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SentimentBubble } from './SentimentBubble';
 import { TopicSentiment } from '../types/sentiment';
+
+interface BubblePhysics {
+  id: string;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  radius: number;
+  targetRadius: number;
+}
+
+
 
 interface SentimentCanvasProps {
   topics: TopicSentiment[];
@@ -15,6 +27,9 @@ export const SentimentCanvas: React.FC<SentimentCanvasProps> = ({
   selectedTopicId
 }) => {
   const [canvasSize, setCanvasSize] = useState({ width: 800, height: 600 });
+  const [bubblePhysics, setBubblePhysics] = useState<{ [key: string]: BubblePhysics }>({});
+  const animationFrameRef = useRef<number>();
+  const lastUpdateRef = useRef<number>(Date.now());
 
   // Update canvas size on window resize
   useEffect(() => {
@@ -38,121 +53,144 @@ export const SentimentCanvas: React.FC<SentimentCanvasProps> = ({
     return Math.max(...topics.map(t => t.volume), 1);
   }, [topics]);
 
-  // Smooth bubble physics with collision detection
-  const bubblePositions = useMemo(() => {
-    if (topics.length === 0) return {};
-
-    const positions: { [key: string]: { x: number; y: number } } = {};
-    const bubbleSizes: { [key: string]: number } = {};
+  // Initialize physics for new bubbles and update existing ones
+  useEffect(() => {
+    const newPhysics = { ...bubblePhysics };
+    const currentIds = new Set(topics.map(t => t.topicId));
     
-    // Calculate bubble sizes first
+    // Remove physics for topics that no longer exist
+    Object.keys(newPhysics).forEach(id => {
+      if (!currentIds.has(id)) {
+        delete newPhysics[id];
+      }
+    });
+
+    // Add physics for new topics
     topics.forEach(topic => {
       const minSize = 20;
       const maxSize = 120;
-      const size = Math.max(minSize, Math.min(maxSize, (topic.volume / maxVolume) * maxSize));
-      bubbleSizes[topic.topicId] = size;
-    });
-
-    // Initialize positions - try to place bubbles without overlapping
-    const placedBubbles: Array<{ x: number; y: number; radius: number; id: string }> = [];
-    const padding = 20;
-
-    topics.forEach((topic) => {
-      const radius = bubbleSizes[topic.topicId] / 2;
-      let x, y;
-      let attempts = 0;
-      let validPosition = false;
-
-      // Try to find a non-overlapping position
-      while (!validPosition && attempts < 100) {
-        x = Math.random() * (canvasSize.width - 2 * (radius + padding)) + radius + padding;
-        y = Math.random() * (canvasSize.height - 2 * (radius + padding)) + radius + padding;
-
-        validPosition = true;
-        
-        // Check for overlaps with existing bubbles
-        for (const placed of placedBubbles) {
-          const distance = Math.sqrt((x - placed.x) ** 2 + (y - placed.y) ** 2);
-          const minDistance = radius + placed.radius + 15; // 15px minimum gap
-          
-          if (distance < minDistance) {
-            validPosition = false;
-            break;
-          }
-        }
-        
-        attempts++;
-      }
-
-      // If we couldn't find a good position, use a fallback grid position
-      if (!validPosition) {
-        const gridCols = Math.ceil(Math.sqrt(topics.length));
-        const index = placedBubbles.length;
-        const col = index % gridCols;
-        const row = Math.floor(index / gridCols);
-        
-        x = (canvasSize.width / gridCols) * (col + 0.5);
-        y = (canvasSize.height / Math.ceil(topics.length / gridCols)) * (row + 0.5);
-        
-        // Ensure within bounds
-        x = Math.max(radius + padding, Math.min(canvasSize.width - radius - padding, x));
-        y = Math.max(radius + padding, Math.min(canvasSize.height - radius - padding, y));
-      }
-
-      placedBubbles.push({ x: x!, y: y!, radius, id: topic.topicId });
-      positions[topic.topicId] = { x: x!, y: y! };
-    });
-
-    // Apply force-based layout for smooth positioning
-    const iterations = 50;
-    for (let iter = 0; iter < iterations; iter++) {
-      const forces: { [key: string]: { fx: number; fy: number } } = {};
+      const targetRadius = Math.max(minSize, Math.min(maxSize, (topic.volume / maxVolume) * maxSize)) / 2;
       
-      // Initialize forces
-      placedBubbles.forEach(bubble => {
-        forces[bubble.id] = { fx: 0, fy: 0 };
-      });
-
-      // Calculate repulsion forces between bubbles
-      for (let i = 0; i < placedBubbles.length; i++) {
-        for (let j = i + 1; j < placedBubbles.length; j++) {
-          const bubble1 = placedBubbles[i];
-          const bubble2 = placedBubbles[j];
-          
-          const dx = bubble2.x - bubble1.x;
-          const dy = bubble2.y - bubble1.y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-          const minDistance = bubble1.radius + bubble2.radius + 20;
-          
-          if (distance < minDistance && distance > 0) {
-            const force = (minDistance - distance) * 0.05;
-            const fx = (dx / distance) * force;
-            const fy = (dy / distance) * force;
-            
-            forces[bubble1.id].fx -= fx;
-            forces[bubble1.id].fy -= fy;
-            forces[bubble2.id].fx += fx;
-            forces[bubble2.id].fy += fy;
-          }
-        }
+      if (!newPhysics[topic.topicId]) {
+        // Initialize new bubble with random position
+        const padding = targetRadius + 20;
+        newPhysics[topic.topicId] = {
+          id: topic.topicId,
+          x: Math.random() * (canvasSize.width - 2 * padding) + padding,
+          y: Math.random() * (canvasSize.height - 2 * padding) + padding,
+          vx: (Math.random() - 0.5) * 0.5, // Small initial velocity
+          vy: (Math.random() - 0.5) * 0.5,
+          radius: targetRadius * 0.1, // Start small and grow
+          targetRadius: targetRadius
+        };
+      } else {
+        // Update target radius for existing bubbles
+        newPhysics[topic.topicId].targetRadius = targetRadius;
       }
+    });
 
-      // Apply forces and update positions
-      placedBubbles.forEach(bubble => {
-        const force = forces[bubble.id];
-        bubble.x += force.fx;
-        bubble.y += force.fy;
+    setBubblePhysics(newPhysics);
+  }, [topics, maxVolume, canvasSize]);
+
+  // Physics animation loop
+  useEffect(() => {
+    const animate = () => {
+      const now = Date.now();
+      const deltaTime = Math.min((now - lastUpdateRef.current) / 1000, 1/30); // Cap at 30 FPS
+      lastUpdateRef.current = now;
+
+      setBubblePhysics(prev => {
+        const updated = { ...prev };
+        const bubbles = Object.values(updated);
         
-        // Keep within bounds
-        bubble.x = Math.max(bubble.radius + padding, Math.min(canvasSize.width - bubble.radius - padding, bubble.x));
-        bubble.y = Math.max(bubble.radius + padding, Math.min(canvasSize.height - bubble.radius - padding, bubble.y));
-        
-        positions[bubble.id] = { x: bubble.x, y: bubble.y };
+        // Apply physics to each bubble
+        bubbles.forEach(bubble => {
+          // Smooth radius animation
+          const radiusDiff = bubble.targetRadius - bubble.radius;
+          bubble.radius += radiusDiff * 0.02; // Slow size changes
+          
+          // Add gentle floating motion (like CryptoBubbles)
+          const time = now * 0.001; // Convert to seconds
+          bubble.vx += Math.sin(time + bubble.id.charCodeAt(0)) * 0.002;
+          bubble.vy += Math.cos(time + bubble.id.charCodeAt(1)) * 0.002;
+          
+          // Add gentle random drift
+          bubble.vx += (Math.random() - 0.5) * 0.005;
+          bubble.vy += (Math.random() - 0.5) * 0.005;
+          
+          // Apply drag to velocities (smooth damping)
+          bubble.vx *= 0.995;
+          bubble.vy *= 0.995;
+          
+          // Collision detection and repulsion
+          bubbles.forEach(other => {
+            if (bubble.id !== other.id) {
+              const dx = other.x - bubble.x;
+              const dy = other.y - bubble.y;
+              const distance = Math.sqrt(dx * dx + dy * dy);
+              const minDistance = bubble.radius + other.radius + 10;
+              
+              if (distance > 0 && distance < minDistance) {
+                // Gentle repulsion
+                const force = (minDistance - distance) * 0.001;
+                const fx = (dx / distance) * force;
+                const fy = (dy / distance) * force;
+                
+                bubble.vx -= fx;
+                bubble.vy -= fy;
+              }
+            }
+          });
+          
+          // Boundary repulsion (soft walls)
+          const wallForce = 0.002;
+          const margin = bubble.radius + 20;
+          
+          if (bubble.x < margin) {
+            bubble.vx += wallForce * (margin - bubble.x);
+          }
+          if (bubble.x > canvasSize.width - margin) {
+            bubble.vx -= wallForce * (bubble.x - (canvasSize.width - margin));
+          }
+          if (bubble.y < margin) {
+            bubble.vy += wallForce * (margin - bubble.y);
+          }
+          if (bubble.y > canvasSize.height - margin) {
+            bubble.vy -= wallForce * (bubble.y - (canvasSize.height - margin));
+          }
+          
+          // Update position
+          bubble.x += bubble.vx * deltaTime * 60; // 60 for 60 FPS normalization
+          bubble.y += bubble.vy * deltaTime * 60;
+          
+          // Clamp position to bounds
+          bubble.x = Math.max(bubble.radius, Math.min(canvasSize.width - bubble.radius, bubble.x));
+          bubble.y = Math.max(bubble.radius, Math.min(canvasSize.height - bubble.radius, bubble.y));
+        });
+
+        return updated;
       });
-    }
 
+      animationFrameRef.current = requestAnimationFrame(animate);
+    };
+
+    animationFrameRef.current = requestAnimationFrame(animate);
+    
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [canvasSize]);
+
+  // Create positions object for rendering
+  const bubblePositions = useMemo(() => {
+    const positions: { [key: string]: { x: number; y: number } } = {};
+    Object.entries(bubblePhysics).forEach(([id, physics]) => {
+      positions[id] = { x: physics.x, y: physics.y };
+    });
     return positions;
-  }, [topics, canvasSize, maxVolume]);
+  }, [bubblePhysics]);
 
   return (
     <div 

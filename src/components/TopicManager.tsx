@@ -104,10 +104,10 @@ export const TopicManager: React.FC<TopicManagerProps> = ({ onTopicsChange }) =>
                 type="text"
                 value={newTopic.label}
                 onChange={(e) => setNewTopic({ ...newTopic, label: e.target.value })}
-                placeholder="e.g., Trade Policy"
+                placeholder="e.g., Tariff Policy"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
-              <p className="text-xs text-gray-500 mt-1">Use proper macro-economic topic formatting</p>
+              <p className="text-xs text-gray-500 mt-1">Use proper macro topic format (e.g., "Tariff Policy")</p>
             </div>
 
             <div>
@@ -118,10 +118,10 @@ export const TopicManager: React.FC<TopicManagerProps> = ({ onTopicsChange }) =>
                 type="text"
                 value={newTopic.keywords?.join(', ') || ''}
                 onChange={(e) => handleKeywordsChange(e.target.value)}
-                placeholder="e.g., tariff, trade war, imports"
+                placeholder="e.g., tariff"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
-              <p className="text-xs text-gray-500 mt-1">Keywords for sentiment analysis (e.g., "tariff")</p>
+              <p className="text-xs text-gray-500 mt-1">Keywords for sentiment analysis - single word example: "tariff"</p>
             </div>
 
             <div className="bg-blue-50 p-3 rounded-md">
@@ -204,7 +204,8 @@ export const TopicManager: React.FC<TopicManagerProps> = ({ onTopicsChange }) =>
       <div className="mt-6 pt-4 border-t border-gray-200">
         <div className="text-sm text-gray-600 space-y-1">
           <p><strong>Tips:</strong></p>
-          <p>• Use specific macro-economic keywords (e.g., "tariff", "GDP", "inflation")</p>
+          <p>• Use specific macro topic format (e.g., "Tariff Policy")</p>
+          <p>• Keywords should be single words (e.g., "tariff")</p>
           <p>• Keywords are case-insensitive and matched in social media posts</p>
           <p>• Bubble colors automatically reflect real-time market sentiment</p>
           <p>• Topics appear as bubbles with size based on discussion volume</p>
@@ -307,7 +308,7 @@ const EditTopicForm: React.FC<EditTopicFormProps> = ({
           }}
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
-        <p className="text-xs text-gray-500 mt-1">Keywords for sentiment analysis (e.g., "tariff")</p>
+        <p className="text-xs text-gray-500 mt-1">Keywords for sentiment analysis - single word example: "tariff"</p>
       </div>
 
       <div className="bg-blue-50 p-3 rounded-md">
