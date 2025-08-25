@@ -29,6 +29,7 @@ class SentimentDataIngester {
         const topicsData = fs.readFileSync(TOPICS_CONFIG_PATH, 'utf8');
         topics = JSON.parse(topicsData);
       } else {
+        console.log('No topics.json found, using default topics');
         topics = this.getDefaultTopics();
       }
       
@@ -38,12 +39,14 @@ class SentimentDataIngester {
         const userTopicsData = fs.readFileSync(userTopicsPath, 'utf8');
         const userTopics = JSON.parse(userTopicsData);
         topics = [...topics, ...userTopics];
+        console.log(`Added ${userTopics.length} user-defined topics`);
       }
       
-      console.log(`Loaded ${topics.length} topics (including custom topics)`);
+      console.log(`Loaded ${topics.length} topics total (including any custom topics)`);
       return topics;
     } catch (error) {
       console.error('Error loading topics:', error);
+      console.log('Falling back to default topics');
       return this.getDefaultTopics();
     }
   }
