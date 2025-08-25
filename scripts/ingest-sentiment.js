@@ -207,6 +207,15 @@ class SentimentDataIngester {
     try {
       console.log('Starting sentiment data ingestion...');
       
+      // Check if we have any API credentials
+      const hasTwitter = !!this.twitterBearerToken;
+      const hasAnyApi = hasTwitter;
+      
+      if (!hasAnyApi) {
+        console.log('No API credentials found - creating demo data...');
+        return await this.createDemoData();
+      }
+      
       // Load topics
       const topics = await this.loadTopics();
       console.log(`Processing ${topics.length} topics`);
@@ -292,6 +301,63 @@ class SentimentDataIngester {
     } catch (error) {
       console.error('Error updating historical data:', error);
     }
+  }
+
+  // Create demo data when no APIs are available
+  async createDemoData() {
+    console.log('Creating demo sentiment data...');
+    
+    const topics = await this.loadTopics();
+    const mockTopics = topics.map(topic => {
+      const sentiment = (Math.random() - 0.5) * 1.5; // -0.75 to 0.75
+      const volume = Math.floor(Math.random() * 200) + 50;
+      const positiveCount = Math.floor(volume * (sentiment > 0 ? 0.6 : 0.3));
+      const negativeCount = Math.floor(volume * (sentiment < 0 ? 0.6 : 0.3));
+      const neutralCount = volume - positiveCount - negativeCount;
+
+      return {
+        topicId: topic.id,
+        label: topic.label,
+        sentiment: Math.round(sentiment * 100) / 100,
+        volume,
+        positiveCount,
+        negativeCount,
+        neutralCount,
+        topPosts: [
+          {
+            id: `demo_${topic.id}_1`,
+            text: `Demo post about ${topic.label.toLowerCase()} showing ${sentiment > 0 ? 'positive' : sentiment < 0 ? 'negative' : 'neutral'} sentiment.`,
+            author: "DemoUser",
+            timestamp: new Date(Date.now() - Math.random() * 86400000).toISOString(),
+            sentiment: sentiment,
+            source: Math.random() > 0.5 ? 'twitter' : 'reddit',
+            url: "https://example.com"
+          }
+        ],
+        trend: [sentiment - 0.1, sentiment, sentiment + 0.05],
+        lastUpdated: new Date().toISOString()
+      };
+    });
+
+    const sentimentData = {
+      timestamp: new Date().toISOString(),
+      topics: mockTopics,
+      totalPosts: mockTopics.reduce((sum, topic) => sum + topic.volume, 0),
+      updateInterval: 5,
+      dataSource: 'demo'
+    };
+
+    // Ensure output directory exists
+    const outputDir = path.dirname(OUTPUT_PATH);
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+
+    // Save demo data
+    fs.writeFileSync(OUTPUT_PATH, JSON.stringify(sentimentData, null, 2));
+    console.log(`Demo sentiment data saved to ${OUTPUT_PATH}`);
+    
+    return sentimentData;
   }
 }
 
