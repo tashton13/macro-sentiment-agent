@@ -55,41 +55,46 @@ export const SentimentCanvas: React.FC<SentimentCanvasProps> = ({
 
   // Initialize physics for new bubbles and update existing ones
   useEffect(() => {
-    const newPhysics = { ...bubblePhysics };
-    const currentIds = new Set(topics.map(t => t.topicId));
-    
-    // Remove physics for topics that no longer exist
-    Object.keys(newPhysics).forEach(id => {
-      if (!currentIds.has(id)) {
-        delete newPhysics[id];
-      }
-    });
-
-    // Add physics for new topics
-    topics.forEach(topic => {
-      const minSize = 20;
-      const maxSize = 120;
-      const targetRadius = Math.max(minSize, Math.min(maxSize, (topic.volume / maxVolume) * maxSize)) / 2;
+    setBubblePhysics(prev => {
+      const newPhysics = { ...prev };
+      const currentIds = new Set(topics.map(t => t.topicId));
       
-      if (!newPhysics[topic.topicId]) {
-        // Initialize new bubble with random position
-        const padding = targetRadius + 20;
-        newPhysics[topic.topicId] = {
-          id: topic.topicId,
-          x: Math.random() * (canvasSize.width - 2 * padding) + padding,
-          y: Math.random() * (canvasSize.height - 2 * padding) + padding,
-          vx: (Math.random() - 0.5) * 0.05, // VERY small initial velocity
-          vy: (Math.random() - 0.5) * 0.05,
-          radius: targetRadius * 0.3, // Start bigger (less dramatic growth)
-          targetRadius: targetRadius
-        };
-      } else {
-        // Update target radius for existing bubbles
-        newPhysics[topic.topicId].targetRadius = targetRadius;
-      }
-    });
+      // Remove physics for topics that no longer exist
+      Object.keys(newPhysics).forEach(id => {
+        if (!currentIds.has(id)) {
+          delete newPhysics[id];
+        }
+      });
 
-    setBubblePhysics(newPhysics);
+      // Add physics for new topics only
+      topics.forEach(topic => {
+        const minSize = 20;
+        const maxSize = 120;
+        const targetRadius = Math.max(minSize, Math.min(maxSize, (topic.volume / maxVolume) * maxSize)) / 2;
+        
+        if (!newPhysics[topic.topicId]) {
+          // Initialize new bubble with random position
+          const padding = targetRadius + 30;
+          newPhysics[topic.topicId] = {
+            id: topic.topicId,
+            x: Math.random() * (canvasSize.width - 2 * padding) + padding,
+            y: Math.random() * (canvasSize.height - 2 * padding) + padding,
+            vx: 0, // Start completely still
+            vy: 0,
+            radius: targetRadius * 0.8, // Start near target size
+            targetRadius: targetRadius
+          };
+        } else {
+          // Only update target radius if it changed significantly
+          const currentTarget = newPhysics[topic.topicId].targetRadius;
+          if (Math.abs(currentTarget - targetRadius) > 2) {
+            newPhysics[topic.topicId].targetRadius = targetRadius;
+          }
+        }
+      });
+
+      return newPhysics;
+    });
   }, [topics, maxVolume, canvasSize]);
 
   // Physics animation loop
@@ -105,25 +110,30 @@ export const SentimentCanvas: React.FC<SentimentCanvasProps> = ({
         
         // Apply physics to each bubble
         bubbles.forEach(bubble => {
-          // Very smooth radius animation
+          // Extremely smooth radius animation - almost imperceptible
           const radiusDiff = bubble.targetRadius - bubble.radius;
-          bubble.radius += radiusDiff * 0.008; // Even slower size changes
+          if (Math.abs(radiusDiff) > 0.1) {
+            bubble.radius += radiusDiff * 0.002; // Very slow size changes
+          }
           
-          // VERY gentle floating motion (like CryptoBubbles - much calmer)
-          const time = now * 0.0005; // Much slower time
-          bubble.vx += Math.sin(time + bubble.id.charCodeAt(0)) * 0.0003; // Much smaller forces
-          bubble.vy += Math.cos(time + bubble.id.charCodeAt(1)) * 0.0003;
+          // Ultra-gentle floating motion (minimal movement)
+          const time = now * 0.0002; // Very slow time
+          const floatX = Math.sin(time + bubble.id.charCodeAt(0)) * 0.00008;
+          const floatY = Math.cos(time + bubble.id.charCodeAt(1)) * 0.00008;
           
-          // Tiny random drift
-          bubble.vx += (Math.random() - 0.5) * 0.0008;
-          bubble.vy += (Math.random() - 0.5) * 0.0008;
+          bubble.vx += floatX;
+          bubble.vy += floatY;
           
-          // Strong drag to keep movement calm
-          bubble.vx *= 0.98;
-          bubble.vy *= 0.98;
+          // Minimal random drift (barely noticeable)
+          bubble.vx += (Math.random() - 0.5) * 0.0001;
+          bubble.vy += (Math.random() - 0.5) * 0.0001;
           
-          // Cap maximum velocity to keep bubbles super calm
-          const maxVelocity = 0.5;
+          // Very strong drag - almost frozen
+          bubble.vx *= 0.95;
+          bubble.vy *= 0.95;
+          
+          // Very low velocity cap
+          const maxVelocity = 0.1;
           const currentSpeed = Math.sqrt(bubble.vx * bubble.vx + bubble.vy * bubble.vy);
           if (currentSpeed > maxVelocity) {
             bubble.vx = (bubble.vx / currentSpeed) * maxVelocity;
@@ -139,8 +149,8 @@ export const SentimentCanvas: React.FC<SentimentCanvasProps> = ({
               const minDistance = bubble.radius + other.radius + 10;
               
               if (distance > 0 && distance < minDistance) {
-                // VERY gentle repulsion (much calmer)
-                const force = (minDistance - distance) * 0.0001; // 10x smaller force
+                // Extremely gentle repulsion
+                const force = (minDistance - distance) * 0.00002; // Even smaller force
                 const fx = (dx / distance) * force;
                 const fy = (dy / distance) * force;
                 
@@ -150,9 +160,9 @@ export const SentimentCanvas: React.FC<SentimentCanvasProps> = ({
             }
           });
           
-          // VERY gentle boundary repulsion
-          const wallForce = 0.0005; // Much gentler walls
-          const margin = bubble.radius + 30;
+          // Ultra-gentle boundary repulsion
+          const wallForce = 0.0001; // Extremely gentle walls
+          const margin = bubble.radius + 40;
           
           if (bubble.x < margin) {
             bubble.vx += wallForce * (margin - bubble.x);
@@ -167,9 +177,9 @@ export const SentimentCanvas: React.FC<SentimentCanvasProps> = ({
             bubble.vy -= wallForce * (bubble.y - (canvasSize.height - margin));
           }
           
-          // Update position (much slower movement)
-          bubble.x += bubble.vx * deltaTime * 20; // Much slower movement
-          bubble.y += bubble.vy * deltaTime * 20;
+          // Update position (extremely slow movement)
+          bubble.x += bubble.vx * deltaTime * 5; // Very slow movement
+          bubble.y += bubble.vy * deltaTime * 5;
           
           // Clamp position to bounds
           bubble.x = Math.max(bubble.radius, Math.min(canvasSize.width - bubble.radius, bubble.x));
