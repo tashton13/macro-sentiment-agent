@@ -163,8 +163,8 @@ function App() {
         </div>
       )}
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Main Content - Use more screen real estate */}
+      <main className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12 py-6">
         {/* Error State */}
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
@@ -178,12 +178,12 @@ function App() {
           </div>
         )}
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Sentiment Canvas - Takes up 3/4 of the width */}
-          <div className="lg:col-span-3">
+        {/* Main Content Grid - Use more real estate */}
+        <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
+          {/* Sentiment Canvas - Takes up 4/5 of the width for more space */}
+          <div className="xl:col-span-4">
             <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-              <div className="h-[600px]">
+              <div className="h-[700px]"> {/* Taller canvas */}
                 <SentimentCanvas
                   topics={data?.topics || []}
                   onBubbleClick={handleBubbleClick}
@@ -193,9 +193,9 @@ function App() {
             </div>
           </div>
 
-          {/* Topic Manager - Takes up 1/4 of the width */}
-          <div className="lg:col-span-1">
-            <div className="h-[600px]">
+          {/* Topic Manager - Takes up 1/5 of the width */}
+          <div className="xl:col-span-1">
+            <div className="h-[700px]"> {/* Match canvas height */}
               <TopicManager onTopicsChange={handleTopicsChange} />
             </div>
           </div>

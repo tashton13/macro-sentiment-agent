@@ -78,9 +78,9 @@ export const SentimentCanvas: React.FC<SentimentCanvasProps> = ({
           id: topic.topicId,
           x: Math.random() * (canvasSize.width - 2 * padding) + padding,
           y: Math.random() * (canvasSize.height - 2 * padding) + padding,
-          vx: (Math.random() - 0.5) * 0.5, // Small initial velocity
-          vy: (Math.random() - 0.5) * 0.5,
-          radius: targetRadius * 0.1, // Start small and grow
+          vx: (Math.random() - 0.5) * 0.05, // VERY small initial velocity
+          vy: (Math.random() - 0.5) * 0.05,
+          radius: targetRadius * 0.3, // Start bigger (less dramatic growth)
           targetRadius: targetRadius
         };
       } else {
@@ -105,22 +105,30 @@ export const SentimentCanvas: React.FC<SentimentCanvasProps> = ({
         
         // Apply physics to each bubble
         bubbles.forEach(bubble => {
-          // Smooth radius animation
+          // Very smooth radius animation
           const radiusDiff = bubble.targetRadius - bubble.radius;
-          bubble.radius += radiusDiff * 0.02; // Slow size changes
+          bubble.radius += radiusDiff * 0.008; // Even slower size changes
           
-          // Add gentle floating motion (like CryptoBubbles)
-          const time = now * 0.001; // Convert to seconds
-          bubble.vx += Math.sin(time + bubble.id.charCodeAt(0)) * 0.002;
-          bubble.vy += Math.cos(time + bubble.id.charCodeAt(1)) * 0.002;
+          // VERY gentle floating motion (like CryptoBubbles - much calmer)
+          const time = now * 0.0005; // Much slower time
+          bubble.vx += Math.sin(time + bubble.id.charCodeAt(0)) * 0.0003; // Much smaller forces
+          bubble.vy += Math.cos(time + bubble.id.charCodeAt(1)) * 0.0003;
           
-          // Add gentle random drift
-          bubble.vx += (Math.random() - 0.5) * 0.005;
-          bubble.vy += (Math.random() - 0.5) * 0.005;
+          // Tiny random drift
+          bubble.vx += (Math.random() - 0.5) * 0.0008;
+          bubble.vy += (Math.random() - 0.5) * 0.0008;
           
-          // Apply drag to velocities (smooth damping)
-          bubble.vx *= 0.995;
-          bubble.vy *= 0.995;
+          // Strong drag to keep movement calm
+          bubble.vx *= 0.98;
+          bubble.vy *= 0.98;
+          
+          // Cap maximum velocity to keep bubbles super calm
+          const maxVelocity = 0.5;
+          const currentSpeed = Math.sqrt(bubble.vx * bubble.vx + bubble.vy * bubble.vy);
+          if (currentSpeed > maxVelocity) {
+            bubble.vx = (bubble.vx / currentSpeed) * maxVelocity;
+            bubble.vy = (bubble.vy / currentSpeed) * maxVelocity;
+          }
           
           // Collision detection and repulsion
           bubbles.forEach(other => {
@@ -131,8 +139,8 @@ export const SentimentCanvas: React.FC<SentimentCanvasProps> = ({
               const minDistance = bubble.radius + other.radius + 10;
               
               if (distance > 0 && distance < minDistance) {
-                // Gentle repulsion
-                const force = (minDistance - distance) * 0.001;
+                // VERY gentle repulsion (much calmer)
+                const force = (minDistance - distance) * 0.0001; // 10x smaller force
                 const fx = (dx / distance) * force;
                 const fy = (dy / distance) * force;
                 
@@ -142,9 +150,9 @@ export const SentimentCanvas: React.FC<SentimentCanvasProps> = ({
             }
           });
           
-          // Boundary repulsion (soft walls)
-          const wallForce = 0.002;
-          const margin = bubble.radius + 20;
+          // VERY gentle boundary repulsion
+          const wallForce = 0.0005; // Much gentler walls
+          const margin = bubble.radius + 30;
           
           if (bubble.x < margin) {
             bubble.vx += wallForce * (margin - bubble.x);
@@ -159,9 +167,9 @@ export const SentimentCanvas: React.FC<SentimentCanvasProps> = ({
             bubble.vy -= wallForce * (bubble.y - (canvasSize.height - margin));
           }
           
-          // Update position
-          bubble.x += bubble.vx * deltaTime * 60; // 60 for 60 FPS normalization
-          bubble.y += bubble.vy * deltaTime * 60;
+          // Update position (much slower movement)
+          bubble.x += bubble.vx * deltaTime * 20; // Much slower movement
+          bubble.y += bubble.vy * deltaTime * 20;
           
           // Clamp position to bounds
           bubble.x = Math.max(bubble.radius, Math.min(canvasSize.width - bubble.radius, bubble.x));
