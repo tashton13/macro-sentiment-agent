@@ -1,4 +1,4 @@
-import { PixiBubbleCanvas } from './PixiBubbleCanvas';
+import { SimpleBubbleCanvas } from './SimpleBubbleCanvas';
 import { TopicSentiment } from '../types/sentiment';
 
 interface SentimentCanvasProps {
@@ -18,8 +18,8 @@ export const SentimentCanvas: React.FC<SentimentCanvasProps> = ({
       className="relative w-full h-full overflow-hidden bg-gradient-to-br from-gray-50 to-white rounded-lg border border-gray-200"
       style={{ minHeight: '500px' }}
     >
-      {/* PixiJS Canvas - WebGL Accelerated like CryptoBubbles */}
-      <PixiBubbleCanvas
+      {/* Simple SVG Canvas - Reliable fallback */}
+      <SimpleBubbleCanvas
         topics={topics}
         onBubbleClick={onBubbleClick}
         selectedTopicId={selectedTopicId}
