@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { TopicSentiment } from '../types/sentiment';
 
 interface SentimentBubbleProps {
@@ -67,57 +66,31 @@ export const SentimentBubble: React.FC<SentimentBubbleProps> = ({
   };
 
   return (
-    <motion.div
-      initial={{ scale: 0, opacity: 0 }}
-      animate={{ 
-        scale: 1, 
-        opacity: 1,
-        x: position.x - size/2,  // Center the bubble on the position
-        y: position.y - size/2   // Center the bubble on the position
-      }}
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.98 }}
+    <div
       className={`absolute cursor-pointer select-none ${isSelected ? 'z-20' : 'z-10'}`}
       style={{
         width: size,
         height: size,
+        left: position.x - size/2,
+        top: position.y - size/2,
         backgroundColor: getSentimentColor(data.sentiment),
         border: `2px solid ${getBorderColor(data.sentiment)}`,
         borderRadius: '50%',
         boxShadow: isSelected 
           ? `0 0 15px ${getBorderColor(data.sentiment)}` 
           : '0 2px 8px rgba(0, 0, 0, 0.1)',
+        transition: 'box-shadow 0.2s ease, transform 0.1s ease', // Only transition hover effects
+        transform: 'scale(1)',
       }}
       onClick={onClick}
-      transition={{
-        type: "tween",
-        ease: "easeOut",
-        duration: 0.1,
-        x: { type: "tween", ease: "linear", duration: 0 }, // No transition for position
-        y: { type: "tween", ease: "linear", duration: 0 }, // No transition for position
-        scale: { type: "spring", stiffness: 400, damping: 30 },
-        opacity: { duration: 0.3 }
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'scale(1.05)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'scale(1)';
       }}
     >
-      {/* Pulse animation for active bubbles */}
-      {Math.abs(data.sentiment) > 0.2 && (
-        <motion.div
-          className="absolute inset-0 rounded-full"
-          style={{
-            backgroundColor: getBorderColor(data.sentiment),
-            opacity: 0.3,
-          }}
-          animate={{
-            scale: [1, 1.3, 1],
-            opacity: [0.3, 0, 0.3],
-          }}
-          transition={{
-            duration: 2,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        />
-      )}
+
       
       {/* Bubble content */}
       <div className="flex flex-col items-center justify-center h-full text-center p-1">
@@ -163,6 +136,6 @@ export const SentimentBubble: React.FC<SentimentBubbleProps> = ({
           </div>
         </div>
       )}
-    </motion.div>
+    </div>
   );
 }; 

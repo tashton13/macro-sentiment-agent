@@ -97,107 +97,31 @@ export const SentimentCanvas: React.FC<SentimentCanvasProps> = ({
     });
   }, [topics, maxVolume, canvasSize]);
 
-  // Physics animation loop
+  // STATIC bubbles - no animation loop at all
   useEffect(() => {
-    const animate = () => {
-      const now = Date.now();
-      const deltaTime = Math.min((now - lastUpdateRef.current) / 1000, 1/30); // Cap at 30 FPS
-      lastUpdateRef.current = now;
-
+    // Only run once every 5 seconds for minimal updates
+    const slowUpdate = () => {
       setBubblePhysics(prev => {
         const updated = { ...prev };
         const bubbles = Object.values(updated);
         
-        // Apply physics to each bubble
+        // Only very slow size changes - no position changes
         bubbles.forEach(bubble => {
-          // Extremely smooth radius animation - almost imperceptible
           const radiusDiff = bubble.targetRadius - bubble.radius;
-          if (Math.abs(radiusDiff) > 0.1) {
-            bubble.radius += radiusDiff * 0.002; // Very slow size changes
+          if (Math.abs(radiusDiff) > 1) {
+            bubble.radius += radiusDiff * 0.01; // Slow size changes only
           }
-          
-          // Ultra-gentle floating motion (minimal movement)
-          const time = now * 0.0002; // Very slow time
-          const floatX = Math.sin(time + bubble.id.charCodeAt(0)) * 0.00008;
-          const floatY = Math.cos(time + bubble.id.charCodeAt(1)) * 0.00008;
-          
-          bubble.vx += floatX;
-          bubble.vy += floatY;
-          
-          // Minimal random drift (barely noticeable)
-          bubble.vx += (Math.random() - 0.5) * 0.0001;
-          bubble.vy += (Math.random() - 0.5) * 0.0001;
-          
-          // Very strong drag - almost frozen
-          bubble.vx *= 0.95;
-          bubble.vy *= 0.95;
-          
-          // Very low velocity cap
-          const maxVelocity = 0.1;
-          const currentSpeed = Math.sqrt(bubble.vx * bubble.vx + bubble.vy * bubble.vy);
-          if (currentSpeed > maxVelocity) {
-            bubble.vx = (bubble.vx / currentSpeed) * maxVelocity;
-            bubble.vy = (bubble.vy / currentSpeed) * maxVelocity;
-          }
-          
-          // Collision detection and repulsion
-          bubbles.forEach(other => {
-            if (bubble.id !== other.id) {
-              const dx = other.x - bubble.x;
-              const dy = other.y - bubble.y;
-              const distance = Math.sqrt(dx * dx + dy * dy);
-              const minDistance = bubble.radius + other.radius + 10;
-              
-              if (distance > 0 && distance < minDistance) {
-                // Extremely gentle repulsion
-                const force = (minDistance - distance) * 0.00002; // Even smaller force
-                const fx = (dx / distance) * force;
-                const fy = (dy / distance) * force;
-                
-                bubble.vx -= fx;
-                bubble.vy -= fy;
-              }
-            }
-          });
-          
-          // Ultra-gentle boundary repulsion
-          const wallForce = 0.0001; // Extremely gentle walls
-          const margin = bubble.radius + 40;
-          
-          if (bubble.x < margin) {
-            bubble.vx += wallForce * (margin - bubble.x);
-          }
-          if (bubble.x > canvasSize.width - margin) {
-            bubble.vx -= wallForce * (bubble.x - (canvasSize.width - margin));
-          }
-          if (bubble.y < margin) {
-            bubble.vy += wallForce * (margin - bubble.y);
-          }
-          if (bubble.y > canvasSize.height - margin) {
-            bubble.vy -= wallForce * (bubble.y - (canvasSize.height - margin));
-          }
-          
-          // Update position (extremely slow movement)
-          bubble.x += bubble.vx * deltaTime * 5; // Very slow movement
-          bubble.y += bubble.vy * deltaTime * 5;
-          
-          // Clamp position to bounds
-          bubble.x = Math.max(bubble.radius, Math.min(canvasSize.width - bubble.radius, bubble.x));
-          bubble.y = Math.max(bubble.radius, Math.min(canvasSize.height - bubble.radius, bubble.y));
         });
 
         return updated;
       });
-
-      animationFrameRef.current = requestAnimationFrame(animate);
     };
 
-    animationFrameRef.current = requestAnimationFrame(animate);
+    // Run much less frequently - every 5 seconds
+    const interval = setInterval(slowUpdate, 5000);
     
     return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
+      clearInterval(interval);
     };
   }, [canvasSize]);
 
