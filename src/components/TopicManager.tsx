@@ -13,14 +13,14 @@ export const TopicManager: React.FC<TopicManagerProps> = ({ onTopicsChange }) =>
   const [newTopic, setNewTopic] = useState<Partial<TopicConfig>>({
     label: '',
     keywords: [],
-    color: '#3b82f6',
     description: ''
   });
 
-  const colors = [
-    '#ef4444', '#3b82f6', '#22c55e', '#f59e0b', '#8b5cf6', 
-    '#06b6d4', '#dc2626', '#059669', '#f97316', '#84cc16'
-  ];
+  // Auto-assign colors based on sentiment (will be determined when data is available)
+  const getAutoColor = (): string => {
+    // Default color for new topics (neutral blue)
+    return '#6b7280'; // Gray color for new topics
+  };
 
   const handleAddTopic = () => {
     if (!newTopic.label || !newTopic.keywords?.length) return;
@@ -29,7 +29,7 @@ export const TopicManager: React.FC<TopicManagerProps> = ({ onTopicsChange }) =>
       id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       label: newTopic.label,
       keywords: newTopic.keywords,
-      color: newTopic.color || '#3b82f6',
+      color: getAutoColor(), // Auto-assigned color
       description: newTopic.description || ''
     };
 
@@ -42,7 +42,6 @@ export const TopicManager: React.FC<TopicManagerProps> = ({ onTopicsChange }) =>
     setNewTopic({
       label: '',
       keywords: [],
-      color: '#3b82f6',
       description: ''
     });
     setIsAddingNew(false);
@@ -99,15 +98,16 @@ export const TopicManager: React.FC<TopicManagerProps> = ({ onTopicsChange }) =>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Topic Label
+                Macro Topic Label
               </label>
               <input
                 type="text"
                 value={newTopic.label}
                 onChange={(e) => setNewTopic({ ...newTopic, label: e.target.value })}
-                placeholder="e.g., Cryptocurrency"
+                placeholder="e.g., Trade Policy"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
+              <p className="text-xs text-gray-500 mt-1">Use proper macro-economic topic formatting</p>
             </div>
 
             <div>
@@ -118,27 +118,16 @@ export const TopicManager: React.FC<TopicManagerProps> = ({ onTopicsChange }) =>
                 type="text"
                 value={newTopic.keywords?.join(', ') || ''}
                 onChange={(e) => handleKeywordsChange(e.target.value)}
-                placeholder="e.g., bitcoin, crypto, blockchain"
+                placeholder="e.g., tariff, trade war, imports"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
+              <p className="text-xs text-gray-500 mt-1">Keywords for sentiment analysis (e.g., "tariff")</p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Color
-              </label>
-              <div className="flex space-x-2">
-                {colors.map(color => (
-                  <button
-                    key={color}
-                    onClick={() => setNewTopic({ ...newTopic, color })}
-                    className={`w-8 h-8 rounded-full border-2 ${
-                      newTopic.color === color ? 'border-gray-800' : 'border-gray-300'
-                    }`}
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-              </div>
+            <div className="bg-blue-50 p-3 rounded-md">
+              <p className="text-sm text-blue-800">
+                <strong>Note:</strong> Bubble color will be automatically assigned based on real-time market sentiment for this topic.
+              </p>
             </div>
 
             <div>
@@ -166,7 +155,7 @@ export const TopicManager: React.FC<TopicManagerProps> = ({ onTopicsChange }) =>
               <button
                 onClick={() => {
                   setIsAddingNew(false);
-                  setNewTopic({ label: '', keywords: [], color: '#3b82f6', description: '' });
+                  setNewTopic({ label: '', keywords: [], description: '' });
                 }}
                 className="flex items-center space-x-2 bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
               >
@@ -194,7 +183,6 @@ export const TopicManager: React.FC<TopicManagerProps> = ({ onTopicsChange }) =>
                 {editingId === topic.id ? (
                   <EditTopicForm 
                     topic={topic}
-                    colors={colors}
                     onSave={(updatedTopic) => handleEditTopic(topic.id, updatedTopic)}
                     onCancel={() => setEditingId(null)}
                     onKeywordsChange={(value) => handleKeywordsChange(value, true)}
@@ -216,9 +204,10 @@ export const TopicManager: React.FC<TopicManagerProps> = ({ onTopicsChange }) =>
       <div className="mt-6 pt-4 border-t border-gray-200">
         <div className="text-sm text-gray-600 space-y-1">
           <p><strong>Tips:</strong></p>
-          <p>• Use specific keywords for better sentiment detection</p>
-          <p>• Keywords are case-insensitive and matched as substrings</p>
-          <p>• Custom topics appear alongside default economic topics</p>
+          <p>• Use specific macro-economic keywords (e.g., "tariff", "GDP", "inflation")</p>
+          <p>• Keywords are case-insensitive and matched in social media posts</p>
+          <p>• Bubble colors automatically reflect real-time market sentiment</p>
+          <p>• Topics appear as bubbles with size based on discussion volume</p>
         </div>
       </div>
     </div>
@@ -273,7 +262,6 @@ const TopicDisplay: React.FC<TopicDisplayProps> = ({ topic, onEdit, onDelete }) 
 
 interface EditTopicFormProps {
   topic: TopicConfig;
-  colors: string[];
   onSave: (updatedTopic: Partial<TopicConfig>) => void;
   onCancel: () => void;
   onKeywordsChange: (value: string) => void;
@@ -281,7 +269,6 @@ interface EditTopicFormProps {
 
 const EditTopicForm: React.FC<EditTopicFormProps> = ({ 
   topic, 
-  colors, 
   onSave, 
   onCancel,
   onKeywordsChange 
@@ -296,7 +283,7 @@ const EditTopicForm: React.FC<EditTopicFormProps> = ({
     <div className="space-y-3">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
-          Topic Label
+          Macro Topic Label
         </label>
         <input
           type="text"
@@ -320,24 +307,13 @@ const EditTopicForm: React.FC<EditTopicFormProps> = ({
           }}
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
+        <p className="text-xs text-gray-500 mt-1">Keywords for sentiment analysis (e.g., "tariff")</p>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Color
-        </label>
-        <div className="flex space-x-2">
-          {colors.map(color => (
-            <button
-              key={color}
-              onClick={() => setEditedTopic({ ...editedTopic, color })}
-              className={`w-8 h-8 rounded-full border-2 ${
-                editedTopic.color === color ? 'border-gray-800' : 'border-gray-300'
-              }`}
-              style={{ backgroundColor: color }}
-            />
-          ))}
-        </div>
+      <div className="bg-blue-50 p-3 rounded-md">
+        <p className="text-sm text-blue-800">
+          <strong>Note:</strong> Bubble color automatically reflects market sentiment.
+        </p>
       </div>
 
       <div>

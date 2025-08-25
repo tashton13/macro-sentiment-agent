@@ -72,8 +72,8 @@ export const SentimentBubble: React.FC<SentimentBubbleProps> = ({
       animate={{ 
         scale: 1, 
         opacity: 1,
-        x: position.x,
-        y: position.y
+        x: position.x - size/2,  // Center the bubble on the position
+        y: position.y - size/2   // Center the bubble on the position
       }}
       whileHover={{ scale: 1.1 }}
       whileTap={{ scale: 0.95 }}
@@ -92,9 +92,10 @@ export const SentimentBubble: React.FC<SentimentBubbleProps> = ({
       layout
       transition={{
         type: "spring",
-        stiffness: 260,
-        damping: 20,
-        layout: { duration: 0.3 }
+        stiffness: 100,
+        damping: 25,
+        mass: 1,
+        duration: 1.2
       }}
     >
       {/* Pulse animation for active bubbles */}

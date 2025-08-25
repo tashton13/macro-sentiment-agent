@@ -38,7 +38,7 @@ export const SentimentCanvas: React.FC<SentimentCanvasProps> = ({
     return Math.max(...topics.map(t => t.volume), 1);
   }, [topics]);
 
-  // Generate stable bubble positions using grid-based layout with smart spacing
+  // Smooth bubble physics with collision detection
   const bubblePositions = useMemo(() => {
     if (topics.length === 0) return {};
 
@@ -47,46 +47,109 @@ export const SentimentCanvas: React.FC<SentimentCanvasProps> = ({
     
     // Calculate bubble sizes first
     topics.forEach(topic => {
-      const minSize = 40;
-      const maxSize = 140;
+      const minSize = 20;
+      const maxSize = 120;
       const size = Math.max(minSize, Math.min(maxSize, (topic.volume / maxVolume) * maxSize));
       bubbleSizes[topic.topicId] = size;
     });
 
-    // Sort topics by size for better arrangement
-    const sortedTopics = [...topics].sort((a, b) => bubbleSizes[b.topicId] - bubbleSizes[a.topicId]);
+    // Initialize positions - try to place bubbles without overlapping
+    const placedBubbles: Array<{ x: number; y: number; radius: number; id: string }> = [];
+    const padding = 20;
 
-    // Calculate grid dimensions based on canvas size and number of topics
-    const cols = Math.ceil(Math.sqrt(topics.length));
-    const rows = Math.ceil(topics.length / cols);
-    
-    const padding = 30;
-    const cellWidth = (canvasSize.width - padding * 2) / cols;
-    const cellHeight = (canvasSize.height - padding * 2) / rows;
+    topics.forEach((topic) => {
+      const radius = bubbleSizes[topic.topicId] / 2;
+      let x, y;
+      let attempts = 0;
+      let validPosition = false;
 
-    sortedTopics.forEach((topic, index) => {
-      const col = index % cols;
-      const row = Math.floor(index / cols);
-      
-      const size = bubbleSizes[topic.topicId];
-      
-      // Base position in grid
-      const baseX = padding + col * cellWidth + cellWidth / 2;
-      const baseY = padding + row * cellHeight + cellHeight / 2;
-      
-      // Add deterministic positioning based on topic ID for consistency
-      const seedX = parseInt(topic.topicId.slice(-2), 36) / 1000;
-      const seedY = parseInt(topic.topicId.slice(-4, -2), 36) / 1000;
-      const jitterX = (seedX - 0.5) * cellWidth * 0.15;
-      const jitterY = (seedY - 0.5) * cellHeight * 0.15;
-      
-      // Ensure bubbles stay within bounds
-      const margin = size / 2 + 10;
-      const x = Math.max(margin, Math.min(canvasSize.width - margin, baseX + jitterX));
-      const y = Math.max(margin, Math.min(canvasSize.height - margin, baseY + jitterY));
-      
-      positions[topic.topicId] = { x, y };
+      // Try to find a non-overlapping position
+      while (!validPosition && attempts < 100) {
+        x = Math.random() * (canvasSize.width - 2 * (radius + padding)) + radius + padding;
+        y = Math.random() * (canvasSize.height - 2 * (radius + padding)) + radius + padding;
+
+        validPosition = true;
+        
+        // Check for overlaps with existing bubbles
+        for (const placed of placedBubbles) {
+          const distance = Math.sqrt((x - placed.x) ** 2 + (y - placed.y) ** 2);
+          const minDistance = radius + placed.radius + 15; // 15px minimum gap
+          
+          if (distance < minDistance) {
+            validPosition = false;
+            break;
+          }
+        }
+        
+        attempts++;
+      }
+
+      // If we couldn't find a good position, use a fallback grid position
+      if (!validPosition) {
+        const gridCols = Math.ceil(Math.sqrt(topics.length));
+        const index = placedBubbles.length;
+        const col = index % gridCols;
+        const row = Math.floor(index / gridCols);
+        
+        x = (canvasSize.width / gridCols) * (col + 0.5);
+        y = (canvasSize.height / Math.ceil(topics.length / gridCols)) * (row + 0.5);
+        
+        // Ensure within bounds
+        x = Math.max(radius + padding, Math.min(canvasSize.width - radius - padding, x));
+        y = Math.max(radius + padding, Math.min(canvasSize.height - radius - padding, y));
+      }
+
+      placedBubbles.push({ x: x!, y: y!, radius, id: topic.topicId });
+      positions[topic.topicId] = { x: x!, y: y! };
     });
+
+    // Apply force-based layout for smooth positioning
+    const iterations = 50;
+    for (let iter = 0; iter < iterations; iter++) {
+      const forces: { [key: string]: { fx: number; fy: number } } = {};
+      
+      // Initialize forces
+      placedBubbles.forEach(bubble => {
+        forces[bubble.id] = { fx: 0, fy: 0 };
+      });
+
+      // Calculate repulsion forces between bubbles
+      for (let i = 0; i < placedBubbles.length; i++) {
+        for (let j = i + 1; j < placedBubbles.length; j++) {
+          const bubble1 = placedBubbles[i];
+          const bubble2 = placedBubbles[j];
+          
+          const dx = bubble2.x - bubble1.x;
+          const dy = bubble2.y - bubble1.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          const minDistance = bubble1.radius + bubble2.radius + 20;
+          
+          if (distance < minDistance && distance > 0) {
+            const force = (minDistance - distance) * 0.05;
+            const fx = (dx / distance) * force;
+            const fy = (dy / distance) * force;
+            
+            forces[bubble1.id].fx -= fx;
+            forces[bubble1.id].fy -= fy;
+            forces[bubble2.id].fx += fx;
+            forces[bubble2.id].fy += fy;
+          }
+        }
+      }
+
+      // Apply forces and update positions
+      placedBubbles.forEach(bubble => {
+        const force = forces[bubble.id];
+        bubble.x += force.fx;
+        bubble.y += force.fy;
+        
+        // Keep within bounds
+        bubble.x = Math.max(bubble.radius + padding, Math.min(canvasSize.width - bubble.radius - padding, bubble.x));
+        bubble.y = Math.max(bubble.radius + padding, Math.min(canvasSize.height - bubble.radius - padding, bubble.y));
+        
+        positions[bubble.id] = { x: bubble.x, y: bubble.y };
+      });
+    }
 
     return positions;
   }, [topics, canvasSize, maxVolume]);
@@ -140,21 +203,29 @@ export const SentimentCanvas: React.FC<SentimentCanvasProps> = ({
 
       {/* Legend */}
       <div className="absolute bottom-4 left-4 bg-white bg-opacity-95 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-gray-200">
-        <h4 className="text-sm font-semibold text-gray-900 mb-2">Legend</h4>
+        <h4 className="text-sm font-semibold text-gray-900 mb-2">Sentiment Legend</h4>
         <div className="space-y-1 text-xs text-gray-700">
           <div className="flex items-center">
-            <div className="w-3 h-3 rounded-full bg-gray-800 mr-2"></div>
-            <span>Positive sentiment</span>
+            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: 'rgba(21, 128, 61, 0.9)' }}></div>
+            <span>Very Positive</span>
           </div>
           <div className="flex items-center">
-            <div className="w-3 h-3 rounded-full bg-gray-400 mr-2"></div>
-            <span>Negative sentiment</span>
+            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: 'rgba(34, 197, 94, 0.8)' }}></div>
+            <span>Positive</span>
           </div>
           <div className="flex items-center">
             <div className="w-3 h-3 rounded-full bg-gray-200 border border-gray-300 mr-2"></div>
-            <span>Neutral sentiment</span>
+            <span>Neutral</span>
           </div>
-          <div className="text-gray-500 mt-1">
+          <div className="flex items-center">
+            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: 'rgba(239, 68, 68, 0.8)' }}></div>
+            <span>Negative</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: 'rgba(153, 27, 27, 0.9)' }}></div>
+            <span>Very Negative</span>
+          </div>
+          <div className="text-gray-500 mt-2 pt-1 border-t border-gray-200">
             Bubble size = post volume
           </div>
         </div>
