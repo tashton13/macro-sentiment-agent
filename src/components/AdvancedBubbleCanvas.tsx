@@ -17,6 +17,11 @@ interface Bubble {
   radius: number;
   targetRadius: number;
   color: string;
+  targetColor: string;
+  currentSentiment: number;
+  targetSentiment: number;
+  currentVolume: number;
+  targetVolume: number;
   isDragging: boolean;
   dragOffsetX: number;
   dragOffsetY: number;
@@ -44,7 +49,7 @@ export const AdvancedBubbleCanvas: React.FC<AdvancedBubbleCanvasProps> = ({
   const [draggedBubble, setDraggedBubble] = useState<string | null>(null);
   const mousePosition = useRef<Vector2D>({ x: 0, y: 0 });
 
-  // Physics constants - Much calmer and gentler
+  // Physics constants - Much calmer and gentler with smoothing
   const PHYSICS_CONFIG = {
     damping: 0.98, // Higher damping for slower movement
     collisionDamping: 0.3, // Much softer collisions
@@ -59,6 +64,11 @@ export const AdvancedBubbleCanvas: React.FC<AdvancedBubbleCanvasProps> = ({
     repulsionDistance: 1.2, // Smaller repulsion area
     targetFPS: 60,
     driftStrength: 0.00005, // Gentle drift movement
+    // Smoothing parameters
+    sentimentSmoothingSpeed: 0.02, // How fast sentiment changes (slower = smoother)
+    volumeSmoothingSpeed: 0.05, // How fast volume changes
+    colorSmoothingSpeed: 0.03, // How fast color transitions
+    radiusSmoothingSpeed: 0.08, // How fast radius changes
   };
 
   // Color calculation for sentiment
@@ -112,6 +122,8 @@ export const AdvancedBubbleCanvas: React.FC<AdvancedBubbleCanvasProps> = ({
         y = y + (centerY - y) * centerBias * 0.3;
       }
 
+      const targetColor = getSentimentColor(topic.sentiment);
+      
       const bubble: Bubble = {
         id: topic.topicId,
         topic,
@@ -121,7 +133,12 @@ export const AdvancedBubbleCanvas: React.FC<AdvancedBubbleCanvasProps> = ({
         vy: existingBubble?.vy || 0,
         radius: existingBubble?.radius || radius,
         targetRadius: radius,
-        color: getSentimentColor(topic.sentiment),
+        color: existingBubble?.color || targetColor,
+        targetColor: targetColor,
+        currentSentiment: existingBubble?.currentSentiment || topic.sentiment,
+        targetSentiment: topic.sentiment,
+        currentVolume: existingBubble?.currentVolume || topic.volume,
+        targetVolume: topic.volume,
         isDragging: existingBubble?.isDragging || false,
         dragOffsetX: 0,
         dragOffsetY: 0,
@@ -146,6 +163,35 @@ export const AdvancedBubbleCanvas: React.FC<AdvancedBubbleCanvasProps> = ({
   const normalize = (v: Vector2D): Vector2D => {
     const mag = Math.sqrt(v.x * v.x + v.y * v.y);
     return mag > 0 ? { x: v.x / mag, y: v.y / mag } : { x: 0, y: 0 };
+  };
+
+  // Smooth interpolation utilities
+  const lerp = (current: number, target: number, speed: number): number => {
+    return current + (target - current) * speed;
+  };
+
+  const hexToRgb = (hex: string): { r: number; g: number; b: number } => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : { r: 0, g: 0, b: 0 };
+  };
+
+  const rgbToHex = (r: number, g: number, b: number): string => {
+    return "#" + ((1 << 24) + (Math.round(r) << 16) + (Math.round(g) << 8) + Math.round(b)).toString(16).slice(1);
+  };
+
+  const blendColors = (color1: string, color2: string, factor: number): string => {
+    const rgb1 = hexToRgb(color1);
+    const rgb2 = hexToRgb(color2);
+    
+    const r = lerp(rgb1.r, rgb2.r, factor);
+    const g = lerp(rgb1.g, rgb2.g, factor);
+    const b = lerp(rgb1.b, rgb2.b, factor);
+    
+    return rgbToHex(r, g, b);
   };
 
   // Physics simulation - Much gentler and more organic
@@ -266,10 +312,29 @@ export const AdvancedBubbleCanvas: React.FC<AdvancedBubbleCanvasProps> = ({
         bubble.y = Math.min(bubble.y, maxY + 5); // Allow slight overshoot
       }
 
-      // Smooth radius animation
+      // Smooth transitions for all bubble properties
+      
+      // Smooth sentiment transition
+      bubble.currentSentiment = lerp(bubble.currentSentiment, bubble.targetSentiment, PHYSICS_CONFIG.sentimentSmoothingSpeed);
+      
+      // Smooth volume transition  
+      bubble.currentVolume = lerp(bubble.currentVolume, bubble.targetVolume, PHYSICS_CONFIG.volumeSmoothingSpeed);
+      
+      // Update target color based on current sentiment
+      bubble.targetColor = getSentimentColor(bubble.currentSentiment);
+      
+      // Smooth color transition
+      if (bubble.color !== bubble.targetColor) {
+        bubble.color = blendColors(bubble.color, bubble.targetColor, PHYSICS_CONFIG.colorSmoothingSpeed);
+      }
+      
+      // Smooth radius animation based on smoothed volume
+      const maxVolume = Math.max(...Array.from(bubblesRef.current.values()).map(b => b.currentVolume), 1);
+      bubble.targetRadius = calculateRadius(bubble.currentVolume, maxVolume);
+      
       const radiusDiff = bubble.targetRadius - bubble.radius;
       if (Math.abs(radiusDiff) > 0.1) {
-        bubble.radius += radiusDiff * 0.1;
+        bubble.radius = lerp(bubble.radius, bubble.targetRadius, PHYSICS_CONFIG.radiusSmoothingSpeed);
         bubble.mass = bubble.radius * bubble.radius; // Update mass
       }
     });
@@ -314,10 +379,10 @@ export const AdvancedBubbleCanvas: React.FC<AdvancedBubbleCanvasProps> = ({
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // Draw text
+      // Draw text with better contrast based on smoothed sentiment
       const fontSize = Math.max(8, bubble.radius / 3);
       ctx.font = `bold ${fontSize}px Arial`;
-      ctx.fillStyle = bubble.topic.sentiment > -0.1 && bubble.topic.sentiment < 0.1 ? '#374151' : '#ffffff';
+      ctx.fillStyle = bubble.currentSentiment > -0.1 && bubble.currentSentiment < 0.1 ? '#374151' : '#ffffff';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       
@@ -327,7 +392,7 @@ export const AdvancedBubbleCanvas: React.FC<AdvancedBubbleCanvasProps> = ({
 
       ctx.restore();
     });
-  }, [dimensions, selectedTopicId]);
+  }, [dimensions, selectedTopicId, getSentimentColor, calculateRadius]);
 
   // Animation loop
   const animate = useCallback(() => {
