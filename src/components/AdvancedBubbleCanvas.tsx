@@ -22,6 +22,7 @@ interface Bubble {
   dragOffsetY: number;
   mass: number;
   lastUpdateTime: number;
+  index: number; // For organic movement calculations
 }
 
 interface Vector2D {
@@ -92,24 +93,24 @@ export const AdvancedBubbleCanvas: React.FC<AdvancedBubbleCanvasProps> = ({
       const existingBubble = bubblesRef.current.get(topic.topicId);
       const radius = calculateRadius(topic.volume, maxVolume);
       
-              // Use existing position if bubble already exists, otherwise use random organic placement
-        let x, y;
-        if (existingBubble) {
-          x = existingBubble.x;
-          y = existingBubble.y;
-        } else {
-          // Random organic placement - no patterns
-          const margin = radius + PHYSICS_CONFIG.boundaryPadding;
-          x = margin + Math.random() * (dimensions.width - 2 * margin);
-          y = margin + Math.random() * (dimensions.height - 2 * margin);
-          
-          // Add slight bias toward center for larger bubbles (higher volume topics)
-          const centerBias = Math.min(radius / PHYSICS_CONFIG.maxRadius, 0.3);
-          const centerX = dimensions.width / 2;
-          const centerY = dimensions.height / 2;
-          x = x + (centerX - x) * centerBias * 0.3;
-          y = y + (centerY - y) * centerBias * 0.3;
-        }
+      // Use existing position if bubble already exists, otherwise use random organic placement
+      let x, y;
+      if (existingBubble) {
+        x = existingBubble.x;
+        y = existingBubble.y;
+      } else {
+        // Random organic placement - no patterns
+        const margin = radius + PHYSICS_CONFIG.boundaryPadding;
+        x = margin + Math.random() * (dimensions.width - 2 * margin);
+        y = margin + Math.random() * (dimensions.height - 2 * margin);
+        
+        // Add slight bias toward center for larger bubbles (higher volume topics)
+        const centerBias = Math.min(radius / PHYSICS_CONFIG.maxRadius, 0.3);
+        const centerX = dimensions.width / 2;
+        const centerY = dimensions.height / 2;
+        x = x + (centerX - x) * centerBias * 0.3;
+        y = y + (centerY - y) * centerBias * 0.3;
+      }
 
       const bubble: Bubble = {
         id: topic.topicId,
@@ -126,6 +127,7 @@ export const AdvancedBubbleCanvas: React.FC<AdvancedBubbleCanvasProps> = ({
         dragOffsetY: 0,
         mass: radius * radius, // Mass proportional to area
         lastUpdateTime: Date.now(),
+        index: existingBubble?.index || index, // Preserve index for consistent organic movement
       };
 
       bubbles.set(topic.topicId, bubble);
@@ -152,7 +154,7 @@ export const AdvancedBubbleCanvas: React.FC<AdvancedBubbleCanvasProps> = ({
     const time = Date.now() * 0.001; // Time for organic movement
 
     // Update each bubble
-    bubbles.forEach((bubble, index) => {
+    bubbles.forEach((bubble) => {
       if (bubble.isDragging) {
         // Handle dragged bubbles
         bubble.x = mousePosition.current.x - bubble.dragOffsetX;
@@ -165,8 +167,8 @@ export const AdvancedBubbleCanvas: React.FC<AdvancedBubbleCanvasProps> = ({
         let forceY = 0;
 
         // Gentle organic drift - like bubbles floating in water
-        const driftOffsetX = Math.sin(time * 0.3 + index * 0.7) * PHYSICS_CONFIG.driftStrength;
-        const driftOffsetY = Math.cos(time * 0.2 + index * 1.1) * PHYSICS_CONFIG.driftStrength;
+        const driftOffsetX = Math.sin(time * 0.3 + bubble.index * 0.7) * PHYSICS_CONFIG.driftStrength;
+        const driftOffsetY = Math.cos(time * 0.2 + bubble.index * 1.1) * PHYSICS_CONFIG.driftStrength;
         forceX += driftOffsetX;
         forceY += driftOffsetY;
 
