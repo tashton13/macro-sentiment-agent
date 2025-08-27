@@ -1,4 +1,4 @@
-import { SimpleBubbleCanvas } from './SimpleBubbleCanvas';
+import { AdvancedBubbleCanvas } from './AdvancedBubbleCanvas';
 import { TopicSentiment } from '../types/sentiment';
 
 interface SentimentCanvasProps {
@@ -15,11 +15,11 @@ export const SentimentCanvas: React.FC<SentimentCanvasProps> = ({
   return (
     <div 
       id="sentiment-canvas"
-      className="relative w-full h-full overflow-hidden bg-gradient-to-br from-gray-50 to-white rounded-lg border border-gray-200"
+      className="relative w-full h-full overflow-hidden rounded-lg border border-gray-200"
       style={{ minHeight: '500px' }}
     >
-      {/* Simple SVG Canvas - Reliable fallback */}
-      <SimpleBubbleCanvas
+      {/* Advanced Physics-Based Canvas */}
+      <AdvancedBubbleCanvas
         topics={topics}
         onBubbleClick={onBubbleClick}
         selectedTopicId={selectedTopicId}
