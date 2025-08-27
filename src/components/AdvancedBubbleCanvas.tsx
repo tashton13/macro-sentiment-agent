@@ -322,7 +322,6 @@ export const AdvancedBubbleCanvas: React.FC<AdvancedBubbleCanvasProps> = ({
 
   // Animation loop
   const animate = useCallback(() => {
-    const currentTime = Date.now();
     const deltaTime = Math.min(1000 / PHYSICS_CONFIG.targetFPS, 16.67); // Cap at 60fps
 
     updatePhysics(deltaTime);
