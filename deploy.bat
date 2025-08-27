@@ -1,16 +1,9 @@
 @echo off
-setlocal enabledelayedexpansion
 
 echo ===============================================
 echo   NASCENT - Automated GitHub Deployment
 echo ===============================================
 echo.
-
-:: Get current timestamp for automatic commit message
-for /f "tokens=2 delims==" %%a in ('wmic OS Get localdatetime /value') do set "dt=%%a"
-set "YY=%dt:~2,2%" & set "YYYY=%dt:~0,4%" & set "MM=%dt:~4,2%" & set "DD=%dt:~6,2%"
-set "HH=%dt:~8,2%" & set "MIN=%dt:~10,2%" & set "SS=%dt:~12,2%"
-set "timestamp=%YYYY%-%MM%-%DD% %HH%:%MIN%"
 
 :: Add all changes
 echo [1/4] Adding changes...
@@ -26,7 +19,7 @@ if %errorlevel% equ 0 (
 
 :: Auto-generate commit message based on what we've been working on
 echo [2/4] Generating commit message...
-set "commit_msg=🚀 Deploy: Advanced Bubble Physics System - %timestamp%"
+set "commit_msg=🚀 Deploy: Advanced Bubble Physics System Update"
 
 :: Commit changes
 echo [3/4] Committing changes...

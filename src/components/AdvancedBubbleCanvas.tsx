@@ -43,19 +43,21 @@ export const AdvancedBubbleCanvas: React.FC<AdvancedBubbleCanvasProps> = ({
   const [draggedBubble, setDraggedBubble] = useState<string | null>(null);
   const mousePosition = useRef<Vector2D>({ x: 0, y: 0 });
 
-  // Physics constants
+  // Physics constants - Much calmer and gentler
   const PHYSICS_CONFIG = {
-    damping: 0.95,
-    collisionDamping: 0.8,
-    centeringForce: 0.0002,
-    separationForce: 0.5,
+    damping: 0.98, // Higher damping for slower movement
+    collisionDamping: 0.3, // Much softer collisions
+    centeringForce: 0.00005, // Very weak centering force
+    separationForce: 0.02, // Much gentler separation
+    randomForce: 0.0001, // Small random movement
     minRadius: 15,
     maxRadius: 80,
-    boundaryPadding: 20,
+    boundaryPadding: 30,
     dragStrength: 0.8,
-    maxVelocity: 5,
-    repulsionDistance: 1.5, // Multiplier for radius
+    maxVelocity: 0.8, // Much slower maximum speed
+    repulsionDistance: 1.2, // Smaller repulsion area
     targetFPS: 60,
+    driftStrength: 0.00005, // Gentle drift movement
   };
 
   // Color calculation for sentiment
@@ -90,24 +92,24 @@ export const AdvancedBubbleCanvas: React.FC<AdvancedBubbleCanvasProps> = ({
       const existingBubble = bubblesRef.current.get(topic.topicId);
       const radius = calculateRadius(topic.volume, maxVolume);
       
-      // Use existing position if bubble already exists, otherwise use spiral layout
-      let x, y;
-      if (existingBubble) {
-        x = existingBubble.x;
-        y = existingBubble.y;
-      } else {
-        // Spiral layout for initial positioning
-        const angle = (index / topics.length) * Math.PI * 4;
-        const spiralRadius = Math.min(dimensions.width, dimensions.height) * 0.15 * (1 + index * 0.1 / topics.length);
-        x = dimensions.width / 2 + Math.cos(angle) * spiralRadius;
-        y = dimensions.height / 2 + Math.sin(angle) * spiralRadius;
-        
-        // Ensure within bounds
-        x = Math.max(radius + PHYSICS_CONFIG.boundaryPadding, 
-                     Math.min(dimensions.width - radius - PHYSICS_CONFIG.boundaryPadding, x));
-        y = Math.max(radius + PHYSICS_CONFIG.boundaryPadding, 
-                     Math.min(dimensions.height - radius - PHYSICS_CONFIG.boundaryPadding, y));
-      }
+              // Use existing position if bubble already exists, otherwise use random organic placement
+        let x, y;
+        if (existingBubble) {
+          x = existingBubble.x;
+          y = existingBubble.y;
+        } else {
+          // Random organic placement - no patterns
+          const margin = radius + PHYSICS_CONFIG.boundaryPadding;
+          x = margin + Math.random() * (dimensions.width - 2 * margin);
+          y = margin + Math.random() * (dimensions.height - 2 * margin);
+          
+          // Add slight bias toward center for larger bubbles (higher volume topics)
+          const centerBias = Math.min(radius / PHYSICS_CONFIG.maxRadius, 0.3);
+          const centerX = dimensions.width / 2;
+          const centerY = dimensions.height / 2;
+          x = x + (centerX - x) * centerBias * 0.3;
+          y = y + (centerY - y) * centerBias * 0.3;
+        }
 
       const bubble: Bubble = {
         id: topic.topicId,
@@ -144,117 +146,122 @@ export const AdvancedBubbleCanvas: React.FC<AdvancedBubbleCanvasProps> = ({
     return mag > 0 ? { x: v.x / mag, y: v.y / mag } : { x: 0, y: 0 };
   };
 
-  // Physics simulation
+  // Physics simulation - Much gentler and more organic
   const updatePhysics = useCallback((deltaTime: number) => {
     const bubbles = Array.from(bubblesRef.current.values());
-    const centerX = dimensions.width / 2;
-    const centerY = dimensions.height / 2;
+    const time = Date.now() * 0.001; // Time for organic movement
 
     // Update each bubble
-    bubbles.forEach(bubble => {
+    bubbles.forEach((bubble, index) => {
       if (bubble.isDragging) {
         // Handle dragged bubbles
         bubble.x = mousePosition.current.x - bubble.dragOffsetX;
         bubble.y = mousePosition.current.y - bubble.dragOffsetY;
-        bubble.vx *= 0.9; // Reduce velocity when dragging
-        bubble.vy *= 0.9;
+        bubble.vx *= 0.95; // Gentle velocity reduction when dragging
+        bubble.vy *= 0.95;
       } else {
-        // Apply forces for non-dragged bubbles
+        // Apply very gentle forces
         let forceX = 0;
         let forceY = 0;
 
-        // Centering force (weak pull toward center)
-        const centerDistance = distance(bubble, { x: centerX, y: centerY });
-        const centerForce = centerDistance * PHYSICS_CONFIG.centeringForce;
-        const centerDirection = normalize({ x: centerX - bubble.x, y: centerY - bubble.y });
-        forceX += centerDirection.x * centerForce;
-        forceY += centerDirection.y * centerForce;
+        // Gentle organic drift - like bubbles floating in water
+        const driftOffsetX = Math.sin(time * 0.3 + index * 0.7) * PHYSICS_CONFIG.driftStrength;
+        const driftOffsetY = Math.cos(time * 0.2 + index * 1.1) * PHYSICS_CONFIG.driftStrength;
+        forceX += driftOffsetX;
+        forceY += driftOffsetY;
 
-        // Collision and separation forces
+        // Very weak centering tendency (only for bubbles far from center)
+        const centerX = dimensions.width / 2;
+        const centerY = dimensions.height / 2;
+        const centerDistance = distance(bubble, { x: centerX, y: centerY });
+        const maxDistance = Math.min(dimensions.width, dimensions.height) * 0.4;
+        
+        if (centerDistance > maxDistance) {
+          const centerForce = (centerDistance - maxDistance) * PHYSICS_CONFIG.centeringForce;
+          const centerDirection = normalize({ x: centerX - bubble.x, y: centerY - bubble.y });
+          forceX += centerDirection.x * centerForce;
+          forceY += centerDirection.y * centerForce;
+        }
+
+        // Gentle separation from other bubbles (no hard collisions)
         bubbles.forEach(other => {
           if (other.id === bubble.id) return;
 
           const dist = distance(bubble, other);
-          const minDistance = (bubble.radius + other.radius) * PHYSICS_CONFIG.repulsionDistance;
+          const safeDistance = (bubble.radius + other.radius) * PHYSICS_CONFIG.repulsionDistance;
 
-          if (dist < minDistance && dist > 0) {
-            // Separation force
-            const separationStrength = (minDistance - dist) / minDistance;
+          if (dist < safeDistance && dist > 0) {
+            // Very gentle separation
+            const separationStrength = Math.pow((safeDistance - dist) / safeDistance, 2);
             const direction = normalize({ x: bubble.x - other.x, y: bubble.y - other.y });
             const force = separationStrength * PHYSICS_CONFIG.separationForce;
             
             forceX += direction.x * force;
             forceY += direction.y * force;
 
-            // Collision response if overlapping
+            // If actually overlapping, gently push apart
             if (dist < bubble.radius + other.radius) {
-              const overlap = bubble.radius + other.radius - dist;
-              const correctionX = direction.x * overlap * 0.5;
-              const correctionY = direction.y * overlap * 0.5;
+              const overlap = (bubble.radius + other.radius - dist) * 0.5;
+              const pushX = direction.x * overlap * 0.02; // Very gentle push
+              const pushY = direction.y * overlap * 0.02;
               
-              bubble.x += correctionX;
-              bubble.y += correctionY;
-              other.x -= correctionX;
-              other.y -= correctionY;
-
-              // Velocity exchange for elastic collision
-              const relativeVx = bubble.vx - other.vx;
-              const relativeVy = bubble.vy - other.vy;
-              const velAlongNormal = relativeVx * direction.x + relativeVy * direction.y;
-
-              if (velAlongNormal > 0) return; // Objects separating
-
-              const restitution = PHYSICS_CONFIG.collisionDamping;
-              const impulse = 2 * velAlongNormal / (bubble.mass + other.mass);
-              
-              bubble.vx -= impulse * other.mass * direction.x * restitution;
-              bubble.vy -= impulse * other.mass * direction.y * restitution;
-              other.vx += impulse * bubble.mass * direction.x * restitution;
-              other.vy += impulse * bubble.mass * direction.y * restitution;
+              bubble.x += pushX;
+              bubble.y += pushY;
+              other.x -= pushX;
+              other.y -= pushY;
             }
           }
         });
 
-        // Apply forces to velocity
-        bubble.vx += forceX * deltaTime;
-        bubble.vy += forceY * deltaTime;
+        // Add tiny random movements for organic feel
+        forceX += (Math.random() - 0.5) * PHYSICS_CONFIG.randomForce;
+        forceY += (Math.random() - 0.5) * PHYSICS_CONFIG.randomForce;
 
-        // Apply damping
+        // Apply forces to velocity (much gentler)
+        bubble.vx += forceX * deltaTime * 0.1;
+        bubble.vy += forceY * deltaTime * 0.1;
+
+        // Strong damping for slow, floating movement
         bubble.vx *= PHYSICS_CONFIG.damping;
         bubble.vy *= PHYSICS_CONFIG.damping;
 
-        // Limit maximum velocity
+        // Limit maximum velocity to keep things calm
         const speed = Math.sqrt(bubble.vx * bubble.vx + bubble.vy * bubble.vy);
         if (speed > PHYSICS_CONFIG.maxVelocity) {
           bubble.vx = (bubble.vx / speed) * PHYSICS_CONFIG.maxVelocity;
           bubble.vy = (bubble.vy / speed) * PHYSICS_CONFIG.maxVelocity;
         }
 
-        // Update position
-        bubble.x += bubble.vx * deltaTime;
-        bubble.y += bubble.vy * deltaTime;
+        // Update position with slower movement
+        bubble.x += bubble.vx * deltaTime * 0.3; // Slower position updates
+        bubble.y += bubble.vy * deltaTime * 0.3;
       }
 
-      // Boundary constraints
+      // Gentle boundary constraints - like invisible soft walls
       const minX = bubble.radius + PHYSICS_CONFIG.boundaryPadding;
       const maxX = dimensions.width - bubble.radius - PHYSICS_CONFIG.boundaryPadding;
       const minY = bubble.radius + PHYSICS_CONFIG.boundaryPadding;
       const maxY = dimensions.height - bubble.radius - PHYSICS_CONFIG.boundaryPadding;
 
+      // Soft boundary repulsion instead of hard collisions
       if (bubble.x < minX) {
-        bubble.x = minX;
-        bubble.vx = Math.abs(bubble.vx) * PHYSICS_CONFIG.collisionDamping;
+        const pushForce = (minX - bubble.x) * 0.001;
+        bubble.vx += pushForce;
+        bubble.x = Math.max(bubble.x, minX - 5); // Allow slight overshoot
       } else if (bubble.x > maxX) {
-        bubble.x = maxX;
-        bubble.vx = -Math.abs(bubble.vx) * PHYSICS_CONFIG.collisionDamping;
+        const pushForce = (maxX - bubble.x) * 0.001;
+        bubble.vx += pushForce;
+        bubble.x = Math.min(bubble.x, maxX + 5); // Allow slight overshoot
       }
 
       if (bubble.y < minY) {
-        bubble.y = minY;
-        bubble.vy = Math.abs(bubble.vy) * PHYSICS_CONFIG.collisionDamping;
+        const pushForce = (minY - bubble.y) * 0.001;
+        bubble.vy += pushForce;
+        bubble.y = Math.max(bubble.y, minY - 5); // Allow slight overshoot
       } else if (bubble.y > maxY) {
-        bubble.y = maxY;
-        bubble.vy = -Math.abs(bubble.vy) * PHYSICS_CONFIG.collisionDamping;
+        const pushForce = (maxY - bubble.y) * 0.001;
+        bubble.vy += pushForce;
+        bubble.y = Math.min(bubble.y, maxY + 5); // Allow slight overshoot
       }
 
       // Smooth radius animation
