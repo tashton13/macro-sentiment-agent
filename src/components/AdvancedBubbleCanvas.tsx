@@ -65,19 +65,32 @@ export const AdvancedBubbleCanvas: React.FC<AdvancedBubbleCanvasProps> = ({
     targetFPS: 60,
     driftStrength: 0.00005, // Gentle drift movement
     // Smoothing parameters
-    sentimentSmoothingSpeed: 0.02, // How fast sentiment changes (slower = smoother)
-    volumeSmoothingSpeed: 0.05, // How fast volume changes
-    colorSmoothingSpeed: 0.03, // How fast color transitions
-    radiusSmoothingSpeed: 0.08, // How fast radius changes
+    sentimentSmoothingSpeed: 0.005, // Much slower sentiment changes (slower = smoother)
+    volumeSmoothingSpeed: 0.02, // Slower volume changes
+    colorSmoothingSpeed: 0.008, // Much slower color transitions
+    radiusSmoothingSpeed: 0.03, // Slower radius changes
   };
 
-  // Color calculation for sentiment
+  // Smooth color calculation for sentiment - gradual transitions
   const getSentimentColor = useCallback((sentiment: number): string => {
-    if (sentiment > 0.5) return '#15803d'; // Dark green
-    if (sentiment > 0.1) return '#22c55e'; // Green
-    if (sentiment < -0.5) return '#991b1b'; // Dark red
-    if (sentiment < -0.1) return '#ef4444'; // Red
-    return '#6b7280'; // Neutral gray
+    // Normalize sentiment to 0-1 range for smooth interpolation
+    const normalizedSentiment = (sentiment + 1) / 2; // Convert -1 to 1 range to 0 to 1
+    
+    if (normalizedSentiment <= 0.5) {
+      // Red to Neutral (0 to 0.5)
+      const factor = normalizedSentiment * 2; // 0 to 1
+      const r = Math.round(153 + (107 - 153) * factor); // 153 to 107 (dark red to gray)
+      const g = Math.round(27 + (114 - 27) * factor);   // 27 to 114
+      const b = Math.round(27 + (128 - 27) * factor);   // 27 to 128
+      return `rgb(${r}, ${g}, ${b})`;
+    } else {
+      // Neutral to Green (0.5 to 1)
+      const factor = (normalizedSentiment - 0.5) * 2; // 0 to 1
+      const r = Math.round(107 + (21 - 107) * factor);  // 107 to 21 (gray to dark green)
+      const g = Math.round(114 + (128 - 114) * factor); // 114 to 128
+      const b = Math.round(128 + (61 - 128) * factor);  // 128 to 61
+      return `rgb(${r}, ${g}, ${b})`;
+    }
   }, []);
 
   // Calculate bubble radius based on volume
@@ -179,19 +192,31 @@ export const AdvancedBubbleCanvas: React.FC<AdvancedBubbleCanvasProps> = ({
     } : { r: 0, g: 0, b: 0 };
   };
 
-  const rgbToHex = (r: number, g: number, b: number): string => {
-    return "#" + ((1 << 24) + (Math.round(r) << 16) + (Math.round(g) << 8) + Math.round(b)).toString(16).slice(1);
+
+
+  const parseRgbColor = (color: string): { r: number; g: number; b: number } => {
+    if (color.startsWith('rgb(')) {
+      const match = color.match(/rgb\((\d+),\s*(\d+),\s*(\d+)\)/);
+      if (match) {
+        return {
+          r: parseInt(match[1]),
+          g: parseInt(match[2]),
+          b: parseInt(match[3])
+        };
+      }
+    }
+    return hexToRgb(color);
   };
 
   const blendColors = (color1: string, color2: string, factor: number): string => {
-    const rgb1 = hexToRgb(color1);
-    const rgb2 = hexToRgb(color2);
+    const rgb1 = parseRgbColor(color1);
+    const rgb2 = parseRgbColor(color2);
     
     const r = lerp(rgb1.r, rgb2.r, factor);
     const g = lerp(rgb1.g, rgb2.g, factor);
     const b = lerp(rgb1.b, rgb2.b, factor);
     
-    return rgbToHex(r, g, b);
+    return `rgb(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)})`;
   };
 
   // Physics simulation - Much gentler and more organic
@@ -314,18 +339,36 @@ export const AdvancedBubbleCanvas: React.FC<AdvancedBubbleCanvasProps> = ({
 
       // Smooth transitions for all bubble properties
       
-      // Smooth sentiment transition
-      bubble.currentSentiment = lerp(bubble.currentSentiment, bubble.targetSentiment, PHYSICS_CONFIG.sentimentSmoothingSpeed);
+      // Only update sentiment if there's a meaningful difference
+      const sentimentDiff = Math.abs(bubble.targetSentiment - bubble.currentSentiment);
+      if (sentimentDiff > 0.001) {
+        bubble.currentSentiment = lerp(bubble.currentSentiment, bubble.targetSentiment, PHYSICS_CONFIG.sentimentSmoothingSpeed);
+      }
       
       // Smooth volume transition  
-      bubble.currentVolume = lerp(bubble.currentVolume, bubble.targetVolume, PHYSICS_CONFIG.volumeSmoothingSpeed);
+      const volumeDiff = Math.abs(bubble.targetVolume - bubble.currentVolume);
+      if (volumeDiff > 0.1) {
+        bubble.currentVolume = lerp(bubble.currentVolume, bubble.targetVolume, PHYSICS_CONFIG.volumeSmoothingSpeed);
+      }
       
-      // Update target color based on current sentiment
-      bubble.targetColor = getSentimentColor(bubble.currentSentiment);
+      // Update target color based on current sentiment (not target sentiment)
+      const newTargetColor = getSentimentColor(bubble.currentSentiment);
       
-      // Smooth color transition
+      // Only update color if it's actually different and meaningful
+      if (bubble.targetColor !== newTargetColor) {
+        bubble.targetColor = newTargetColor;
+      }
+      
+      // Very gradual color transition
       if (bubble.color !== bubble.targetColor) {
-        bubble.color = blendColors(bubble.color, bubble.targetColor, PHYSICS_CONFIG.colorSmoothingSpeed);
+        const currentRgb = parseRgbColor(bubble.color);
+        const targetRgb = parseRgbColor(bubble.targetColor);
+        const colorDistance = Math.abs(currentRgb.r - targetRgb.r) + Math.abs(currentRgb.g - targetRgb.g) + Math.abs(currentRgb.b - targetRgb.b);
+        
+        // Only blend if there's a significant color difference
+        if (colorDistance > 3) {
+          bubble.color = blendColors(bubble.color, bubble.targetColor, PHYSICS_CONFIG.colorSmoothingSpeed);
+        }
       }
       
       // Smooth radius animation based on smoothed volume
