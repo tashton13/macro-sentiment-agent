@@ -67,29 +67,38 @@ export const AdvancedBubbleCanvas: React.FC<AdvancedBubbleCanvasProps> = ({
     // Smoothing parameters
     sentimentSmoothingSpeed: 0.005, // Much slower sentiment changes (slower = smoother)
     volumeSmoothingSpeed: 0.02, // Slower volume changes
-    colorSmoothingSpeed: 0.008, // Much slower color transitions
+    colorSmoothingSpeed: 0.03, // Faster color transitions to see changes
     radiusSmoothingSpeed: 0.03, // Slower radius changes
   };
 
-  // Smooth color calculation for sentiment - gradual transitions
+  // CryptoBubbles-inspired color calculation with vibrant colors
   const getSentimentColor = useCallback((sentiment: number): string => {
-    // Normalize sentiment to 0-1 range for smooth interpolation
-    const normalizedSentiment = (sentiment + 1) / 2; // Convert -1 to 1 range to 0 to 1
+    // Clamp sentiment between -1 and 1
+    const clampedSentiment = Math.max(-1, Math.min(1, sentiment));
     
-    if (normalizedSentiment <= 0.5) {
-      // Red to Neutral (0 to 0.5)
-      const factor = normalizedSentiment * 2; // 0 to 1
-      const r = Math.round(153 + (107 - 153) * factor); // 153 to 107 (dark red to gray)
-      const g = Math.round(27 + (114 - 27) * factor);   // 27 to 114
-      const b = Math.round(27 + (128 - 27) * factor);   // 27 to 128
-      return `rgb(${r}, ${g}, ${b})`;
+    if (clampedSentiment > 0.1) {
+      // Positive sentiment - vibrant greens like CryptoBubbles
+      const intensity = Math.min(clampedSentiment / 0.8, 1); // Scale 0.1-1 to 0-1
+      if (intensity > 0.7) {
+        // Very positive - bright green
+        return `rgb(${Math.round(34 * (1 - intensity) + 16 * intensity)}, ${Math.round(197 * (1 - intensity) + 185 * intensity)}, ${Math.round(94 * (1 - intensity) + 76 * intensity)})`;
+      } else {
+        // Moderately positive - medium green
+        return `rgb(${Math.round(74 + (34 - 74) * intensity)}, ${Math.round(222 + (197 - 222) * intensity)}, ${Math.round(128 + (94 - 128) * intensity)})`;
+      }
+    } else if (clampedSentiment < -0.1) {
+      // Negative sentiment - vibrant reds like CryptoBubbles
+      const intensity = Math.min(Math.abs(clampedSentiment) / 0.8, 1); // Scale 0.1-1 to 0-1
+      if (intensity > 0.7) {
+        // Very negative - deep red
+        return `rgb(${Math.round(239 * (1 - intensity) + 153 * intensity)}, ${Math.round(68 * (1 - intensity) + 27 * intensity)}, ${Math.round(68 * (1 - intensity) + 27 * intensity)})`;
+      } else {
+        // Moderately negative - medium red
+        return `rgb(${Math.round(248 + (239 - 248) * intensity)}, ${Math.round(113 + (68 - 113) * intensity)}, ${Math.round(113 + (68 - 113) * intensity)})`;
+      }
     } else {
-      // Neutral to Green (0.5 to 1)
-      const factor = (normalizedSentiment - 0.5) * 2; // 0 to 1
-      const r = Math.round(107 + (21 - 107) * factor);  // 107 to 21 (gray to dark green)
-      const g = Math.round(114 + (128 - 114) * factor); // 114 to 128
-      const b = Math.round(128 + (61 - 128) * factor);  // 128 to 61
-      return `rgb(${r}, ${g}, ${b})`;
+      // Neutral sentiment - light gray/white like CryptoBubbles neutral
+      return 'rgb(156, 163, 175)'; // Gray-400
     }
   }, []);
 
@@ -146,11 +155,11 @@ export const AdvancedBubbleCanvas: React.FC<AdvancedBubbleCanvasProps> = ({
         vy: existingBubble?.vy || 0,
         radius: existingBubble?.radius || radius,
         targetRadius: radius,
-        color: existingBubble?.color || targetColor,
+        color: targetColor, // Always start with the correct color
         targetColor: targetColor,
-        currentSentiment: existingBubble?.currentSentiment || topic.sentiment,
+        currentSentiment: topic.sentiment, // Start with actual sentiment
         targetSentiment: topic.sentiment,
-        currentVolume: existingBubble?.currentVolume || topic.volume,
+        currentVolume: topic.volume, // Start with actual volume
         targetVolume: topic.volume,
         isDragging: existingBubble?.isDragging || false,
         dragOffsetX: 0,
@@ -588,23 +597,23 @@ export const AdvancedBubbleCanvas: React.FC<AdvancedBubbleCanvasProps> = ({
         <h4 className="text-sm font-semibold text-gray-900 mb-2">Sentiment Legend</h4>
         <div className="space-y-1 text-xs text-gray-700">
           <div className="flex items-center">
-            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: '#15803d' }}></div>
+            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: 'rgb(16, 185, 76)' }}></div>
             <span>Very Positive</span>
           </div>
           <div className="flex items-center">
-            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: '#22c55e' }}></div>
+            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: 'rgb(34, 197, 94)' }}></div>
             <span>Positive</span>
           </div>
           <div className="flex items-center">
-            <div className="w-3 h-3 rounded-full bg-gray-400 mr-2"></div>
+            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: 'rgb(156, 163, 175)' }}></div>
             <span>Neutral</span>
           </div>
           <div className="flex items-center">
-            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: '#ef4444' }}></div>
+            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: 'rgb(239, 68, 68)' }}></div>
             <span>Negative</span>
           </div>
           <div className="flex items-center">
-            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: '#991b1b' }}></div>
+            <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: 'rgb(153, 27, 27)' }}></div>
             <span>Very Negative</span>
           </div>
           <div className="text-gray-500 mt-2 pt-1 border-t border-gray-200">
